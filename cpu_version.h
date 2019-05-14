@@ -1,68 +1,73 @@
 #ifndef CPU_VERSION_H
 #define CPU_VERSION_H
 
-void printResultOnArray(uint32_t arraySize, uint32_t* array, std::vector<bool> path);
+#include <stdint.h>
 
-uint32_t runCPU(uint32_t arraySize, uint32_t* h_array) {
-    uint32_t **tmp = new uint32_t *[arraySize];
-    bool **path = new bool *[arraySize]; // true means coming from the top, false - from the left
+const int maxPrintArraySize = 20;
 
-    printf("Starting CPU calculations...\n");
+uint32_t* generateArray(uint32_t arraySize);
+void printArray(uint32_t* arr, uint32_t arraySize);
+void generatePathFromPathArray(bool *pathArray, uint32_t arraySize, bool *resultPath);
+
+void runCPU(uint32_t arraySize, bool verbose, uint32_t& result, bool* resultPath) {
+    uint32_t *array = generateArray(arraySize);
+
+    if(verbose && arraySize < maxPrintArraySize) {
+        printArray(array, arraySize);
+    }
+
+    bool *pathArray = new bool [arraySize * arraySize];
 
     for (uint32_t i = 0; i < arraySize; i++) {
-        tmp[i] = new uint32_t[arraySize];
-        path[i] = new bool[arraySize];
         for (uint32_t j = 0; j < arraySize; j++) {
-            tmp[i][j] = h_array[i * arraySize + j];
-            path[i][j] = false;
+            pathArray[i * arraySize + j] = false;
 
-            if (i > 0 && ((j > 0 && tmp[i - 1][j] < tmp[i][j - 1]) || j == 0)) {
-                tmp[i][j] += tmp[i - 1][j]; // From the top
-                path[i][j] = true;
+            if (i > 0 && ((j > 0 && array[(i - 1) * arraySize + j] < array[i * arraySize + j - 1]) || j == 0)) {
+                array[i * arraySize + j] += array[(i - 1) * arraySize + j]; // From the top
+                pathArray[i * arraySize + j] = true;
             } else if (j > 0) {
-                tmp[i][j] += tmp[i][j - 1]; // From the left
-                path[i][j] = false;
+                array[i * arraySize + j] += array[i * arraySize + j - 1]; // From the left
+                pathArray[i * arraySize + j] = false;
             }
         }
     }
+    
+    generatePathFromPathArray(pathArray, arraySize, resultPath);
+    result = array[(arraySize - 1) * arraySize + arraySize - 1];
 
-    std::vector<bool> pathNodes;
-    uint32_t i = arraySize, j = arraySize;
-    while(i > 0 && j > 0) {
-        pathNodes.push_back(path[i - 1][j - 1]);
-        if(path[i - 1][j - 1]) i--;
-        else j--;
-    }
-
-    printResultOnArray(arraySize, h_array, pathNodes);
-
-    return tmp[arraySize - 1][arraySize - 1];
+    free(array);
+    free(pathArray);
 }
 
-void printResultOnArray(uint32_t arraySize, uint32_t* array, std::vector<bool> path) {
-    uint32_t pathX = 0, pathY = 0;
-    uint32_t k = path.size() - 1;
-    printf("Computed path:\n");
-    for(uint32_t i = 0; i < arraySize; i++) {
-        for(uint32_t j = 0; j < arraySize; j++) {
-            if(i == pathX && j == pathY) {
-                printf("|%5u", array[i * arraySize + j]);
-            }
-            else {
-                printf("|#####");
-            }
-            if(k > 0 && !path[k - 1]) {
-                pathY++;
-                k--;
-            }
+uint32_t* generateArray(uint32_t arraySize) {
+    uint32_t *arr = new uint32_t[arraySize * arraySize];
+    for (uint32_t i = 0; i < arraySize; i++) {
+        for (uint32_t j = 0; j < arraySize; j++) {
+            arr[i * arraySize + j] = i * arraySize + j;
         }
-        if(k > 0 && path[k - 1]) {
-            pathX++;
-            k--;
+    }
+    return arr;
+}
+
+void printArray(uint32_t* arr, uint32_t arraySize) {
+    for (uint32_t i = 0; i < arraySize; i++) {
+        for (uint32_t j = 0; j < arraySize; j++) {
+            printf("|%5u ", arr[i * arraySize + j]);
         }
-        printf("|\n");
+        printf("\n");
     }
     printf("\n");
+}
+
+void generatePathFromPathArray(bool *pathArray, uint32_t arraySize, bool *resultPath) {
+    uint32_t i = arraySize, j = arraySize;
+    uint32_t k = arraySize * 2 - 2 - 1;
+    while(k > 0) {
+        resultPath[k] = pathArray[(i - 1) * arraySize + j - 1];
+        k--;
+        if(pathArray[(i - 1) * arraySize + j - 1]) i--;
+        else j--;
+    }
 }
 
 #endif
